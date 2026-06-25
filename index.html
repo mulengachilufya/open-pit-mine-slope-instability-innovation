@@ -591,7 +591,7 @@
     renderer.setSize(host.clientWidth, host.clientHeight);
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.98;
     host.appendChild(renderer.domElement);
 
     scene = new THREE.Scene();
@@ -692,14 +692,17 @@
       results.push(fos);
       if (fos < minFoS){ minFoS = fos; worst = ZONES[i]; worstIdx=i; }
       var hex = riskColor(fos);
-      var col = ROCK_BASE.clone().lerp(new THREE.Color(hex), 0.55);
+      // keep the natural rock; tint only lightly, and more strongly as a sector nears failure
+      var t = Math.max(0, Math.min(1, (1.6 - fos) / (1.6 - 0.9)));
+      var tint = 0.12 + 0.38 * t;
+      var col = ROCK_BASE.clone().lerp(new THREE.Color(hex), tint);
       zoneMeshes[i].material.color.copy(col);
-      // critical pulse + slump creep
+      // gentle warning glow, only near the limit
       var crit = Math.max(0, 1.05 - fos);
-      var pulse = crit>0 ? (0.18+0.12*Math.sin(performance.now()*0.006)) : 0;
+      var pulse = crit>0 ? (0.06+0.05*Math.sin(performance.now()*0.005)) : 0;
       zoneMeshes[i].material.emissive.setHex(hex).multiplyScalar(pulse);
       zoneMeshes[i].position.y = -Math.min(6, crit*22) * (0.6+0.4*Math.sin(performance.now()*0.004));
-      zoneLabels[i].material.color.setHex(hex).lerp(new THREE.Color(0xffffff),0.15);
+      zoneLabels[i].material.color.setHex(hex).lerp(new THREE.Color(0xffffff),0.28);
     }
     window.__results = results; window.__min = minFoS; window.__worst = worst;
     return {results:results, minFoS:minFoS, worst:worst};
