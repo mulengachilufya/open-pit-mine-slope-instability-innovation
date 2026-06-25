@@ -11,14 +11,22 @@ geotechnical data into one early warning — *which zone is at risk, and what to
 
 > Developed by **Purity Kampamba**, Environmental Engineer
 
-## View it locally
+## What's inside
 
-No build step, no server. Just open the file:
+Scroll through three linked views, all driven by the same live inputs:
+
+1. **Live 3D twin** — a terraced open-pit you can orbit, with per-sector risk colouring and a rising/falling water table.
+2. **Slope cross-section** — an annotated, animated section (β, water table, pore pressure `u`, depth-to-failure-plane `z`, failure plane, borehole, piezometer, rain gauge) with groundwater that **seeps toward the slope face** in real time.
+3. **Failure scenario** — press *Run* to watch the slope collapse along the failure plane and run out into the working pit, with a runout / casualty readout. Severity scales with the live Factor of Safety.
+
+## View it locally — fully offline
+
+No build step, no server, **no internet required**. Just open the file:
 
 1. Double-click **`index.html`**, or right-click → *Open with* → Chrome.
-2. The 3D twin loads from CDN (Three.js), so you need an internet connection the first time.
+2. Everything works offline — Three.js is vendored in [`lib/`](lib/), and the two new sections are pure HTML5 canvas with no dependencies.
 
-If you're offline, the dashboard and risk calculations still work — only the 3D view needs the CDN.
+*(Fonts come from Google Fonts when online; offline they fall back to system serif/sans and remain perfectly readable.)*
 
 ## Deploy online (Netlify)
 
