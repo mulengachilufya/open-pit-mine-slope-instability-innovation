@@ -2432,6 +2432,95 @@
     var io=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){var i=secs.indexOf(en.target);links.forEach(function(l){l.classList.remove("active");});if(links[i])links[i].classList.add("active");}});},{threshold:0.45});
     secs.forEach(function(s){if(s)io.observe(s);});
   })();
+  /* ============================================================
+     MODEL & SITE DATA — formulas + per-mine editable inputs
+     ============================================================ */
+  (function siteData(){
+    var anchor=document.querySelector(".page-credit"); if(!anchor) return;
+    function mono(s){return '<div style="font-family:ui-monospace,Consolas,monospace;background:rgba(255,255,255,.06);border-radius:6px;padding:6px 10px;font-size:12px;margin:4px 0;overflow-x:auto">'+s+'</div>';}
+
+    var sec=document.createElement("section");
+    sec.className="section"; sec.id="model";
+    sec.innerHTML='<div class="section-inner">'
+      +'<div class="section-head"><p class="eyebrow center">Methodology · enter your mine’s data</p>'
+      +'<h2 class="section-title">The formulas, and your site parameters</h2>'
+      +'<p class="lede">Every factor of safety, rate and percentage in this tool comes from the equations below. Replace the constants with your pit’s measured values and all three views update live — same model, your data.</p></div>'
+      +'<div id="mdGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start"></div></div>';
+    anchor.parentNode.insertBefore(sec,anchor);
+    var grid=sec.querySelector("#mdGrid");
+
+    // ---- formulas ----
+    var f=document.createElement("div");
+    f.style.cssText="background:var(--charcoal);color:#efe4d2;border-radius:14px;padding:18px 20px;line-height:1.6";
+    f.innerHTML='<h4 style="font-family:Fraunces,serif;margin:0 0 8px;color:#fff;font-size:16px">Factor of Safety — per sector</h4>'
+      +mono("FoS = ( c′ + (σ − u)·tanφ ) ÷ ( γ·z·sinβ·cosβ + k_h·γ·z·cos²β )")
+      +mono("σ = γ·z·cos²β        (normal stress, kPa)")
+      +mono("u = γ_w·h_w·cos²β     (pore pressure, kPa)")
+      +mono("h_w = z · (water% × drainage)")
+      +mono("k_h = (blasting% ÷ 100) × 0.25   (blast load)")
+      +'<h4 style="font-family:Fraunces,serif;margin:12px 0 8px;color:#fff;font-size:16px">Pit water table %</h4>'
+      +mono("water% = clamp( 25 + 0.60·rain% − 0.45·dewater% , 4 , 97 )")
+      +'<h4 style="font-family:Fraunces,serif;margin:12px 0 8px;color:#fff;font-size:16px">Risk bands</h4>'
+      +'<div style="font-size:12.5px;color:#e7d8bd">FoS ≥ 1.5 = Low · 1.25–1.5 = Elevated · 1.05–1.25 = High · &lt; 1.05 = Critical (failure)</div>'
+      +'<div id="mdWorked" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);font-size:12px;color:#d8c8ad"></div>';
+    grid.appendChild(f);
+
+    // ---- editable site parameters ----
+    var d=document.createElement("div");
+    d.style.cssText="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px";
+    d.innerHTML='<h4 style="font-family:Fraunces,serif;margin:0 0 12px;font-size:16px">Your site parameters</h4>';
+    grid.appendChild(d);
+
+    function gRow(label,val,step,set){
+      var r=document.createElement("label");
+      r.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0;font-size:13px";
+      r.innerHTML='<span>'+label+'</span>';
+      var i=document.createElement("input"); i.type="number"; i.value=val; i.step=step;
+      i.style.cssText="width:96px;padding:6px 8px;border:1px solid var(--line-strong);border-radius:8px;font:inherit;text-align:right;background:var(--paper-2)";
+      i.oninput=function(){var v=parseFloat(i.value); if(!isNaN(v))set(v);};
+      r.appendChild(i); return r;
+    }
+    d.appendChild(gRow("Rock unit weight γ (kN/m³)",GAMMA,"0.5",function(v){GAMMA=v;}));
+    d.appendChild(gRow("Water unit weight γ_w (kN/m³)",GAMMA_W,"0.1",function(v){GAMMA_W=v;}));
+
+    var hd=document.createElement("div");
+    hd.style.cssText="display:grid;grid-template-columns:1.5fr .8fr .9fr .9fr .8fr;gap:6px;margin:14px 0 4px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft)";
+    hd.innerHTML='<span>Sector name</span><span>z (m)</span><span>Drainage</span><span>Strength</span><span>Slope ±°</span>';
+    d.appendChild(hd);
+    ZONES.forEach(function(z){
+      var row=document.createElement("div");
+      row.style.cssText="display:grid;grid-template-columns:1.5fr .8fr .9fr .9fr .8fr;gap:6px;margin:4px 0";
+      function c(val,step,set,txt){
+        var i=document.createElement("input"); i.value=val; if(!txt){i.type="number"; i.step=step;}
+        i.style.cssText="width:100%;padding:5px 6px;border:1px solid var(--line);border-radius:7px;font:inherit;font-size:12px;background:var(--paper-2)"+(txt?"":";text-align:right");
+        i.oninput=function(){ if(txt){set(i.value);} else {var v=parseFloat(i.value); if(!isNaN(v))set(v);} };
+        return i;
+      }
+      row.appendChild(c(z.name,null,function(v){z.name=v;},true));
+      row.appendChild(c(z.z,"1",function(v){z.z=v;}));
+      row.appendChild(c(z.waterMult,"0.05",function(v){z.waterMult=v;}));
+      row.appendChild(c(z.cohMult,"0.05",function(v){z.cohMult=v;}));
+      row.appendChild(c(z.slopeOff,"1",function(v){z.slopeOff=v;}));
+      d.appendChild(row);
+    });
+    var note=document.createElement("p");
+    note.style.cssText="font-size:11.5px;color:var(--ink-soft);margin:14px 0 0;line-height:1.5";
+    note.innerHTML="<b>Drainage</b> scales pore pressure (1 = neutral, &gt;1 = wetter wall). <b>Strength</b> scales cohesion (1 = neutral, &lt;1 = weaker rock). <b>Slope ±</b> offsets the overall angle for that wall. The rainfall / dewatering / blasting / cohesion / friction sliders are at the top.";
+    d.appendChild(note);
+
+    function worked(){
+      var gi=0,mn=99,i; for(i=0;i<ZONES.length;i++){var ff=zoneFoS(ZONES[i],curW); if(ff<mn){mn=ff;gi=i;}}
+      var z=ZONES[gi], beta=(state.slope+z.slopeOff)*Math.PI/180, cb=Math.cos(beta);
+      var sig=GAMMA*z.z*cb*cb, hw=z.z*Math.min(1,curW*z.waterMult), u=GAMMA_W*hw*cb*cb;
+      var el=document.getElementById("mdWorked");
+      if(el)el.innerHTML='Live, governing sector <b style="color:#fff">'+z.name+'</b>: β='+Math.round(state.slope+z.slopeOff)+'°, z='+z.z+' m, σ='+sig.toFixed(0)+', u='+u.toFixed(0)+', c′='+(state.cohesion*z.cohMult).toFixed(0)+' kPa &rarr; <b style="color:#fff">FoS = '+mn.toFixed(2)+'</b>';
+    }
+    setInterval(worked,500); worked();
+
+    var nav=document.querySelector(".floatnav");
+    if(nav){var a=document.createElement("a"); a.href="#model"; a.innerHTML='<span></span>Site data'; nav.appendChild(a);}
+  })();
+
 })();
 </script>
 </body>
