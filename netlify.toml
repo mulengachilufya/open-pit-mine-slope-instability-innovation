@@ -1,0 +1,10 @@
+# Netlify configuration — static single-page site, nothing to build.
+[build]
+  publish = "."
+  command = ""
+
+# Send every route to the digital twin.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

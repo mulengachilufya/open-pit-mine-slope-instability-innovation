@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MineShield — Open-Pit Slope Stability Digital Twin</title>
+<meta name="description" content="A live digital twin and risk dashboard for open-pit mine slope stability. Developed by Purity Kampamba, Environmental Engineer." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#efe7d8;
+    --paper-2:#f6f0e4;
+    --card:#f4eddf;
+    --ink:#2a241e;
+    --ink-soft:#5d5346;
+    --muted:#897c69;
+    --line:rgba(42,36,30,.14);
+    --line-strong:rgba(42,36,30,.26);
+    --terra:#bf5f2c;
+    --terra-dark:#9b4820;
+    --charcoal:#221f1a;
+    --charcoal-2:#2c281f;
+    --green:#5f8a55;
+    --amber:#cda23e;
+    --orange:#c46a2e;
+    --red:#a3331f;
+    --shadow:0 18px 40px -24px rgba(46,33,20,.55);
+    --shadow-sm:0 6px 16px -10px rgba(46,33,20,.5);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    color:var(--ink);
+    background-color:var(--paper);
+    background-image:
+      radial-gradient(1200px 700px at 78% -10%, rgba(191,95,44,.10), transparent 60%),
+      radial-gradient(900px 600px at 6% 110%, rgba(95,138,85,.10), transparent 60%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .app{
+    display:grid;
+    grid-template-columns:340px 1fr 360px;
+    grid-template-rows:auto 1fr auto;
+    gap:14px;
+    height:100vh;
+    padding:14px;
+  }
+
+  /* ---------- header ---------- */
+  header{
+    grid-column:1 / -1;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:18px;
+    padding:10px 18px;
+    background:linear-gradient(180deg,var(--charcoal),var(--charcoal-2));
+    color:var(--paper-2);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    border:1px solid rgba(255,255,255,.05);
+  }
+  .brand{display:flex;align-items:center;gap:14px;min-width:0}
+  .mark{
+    width:42px;height:42px;border-radius:11px;flex:none;
+    background:radial-gradient(120% 120% at 30% 20%, #d9743b, var(--terra-dark));
+    display:grid;place-items:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.25), 0 6px 14px -8px rgba(0,0,0,.7);
+  }
+  .mark svg{width:24px;height:24px}
+  .brand h1{
+    font-family:"Fraunces",Georgia,serif;
+    font-weight:600;font-size:22px;line-height:1;margin:0;letter-spacing:.2px;
+  }
+  .brand .sub{font-size:12px;color:#cdbfa9;margin-top:4px;letter-spacing:.3px}
+  .header-right{display:flex;align-items:center;gap:18px;flex:none}
+  .pit-status{text-align:right}
+  .pit-status .lbl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#b6a88f}
+  .pit-status .val{font-family:"Fraunces",serif;font-size:19px;font-weight:600;margin-top:2px}
+  .chip{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:8px 14px;border-radius:999px;font-weight:600;font-size:13px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  }
+  .dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 0 3px rgba(255,255,255,.06)}
+
+  /* ---------- panels ---------- */
+  .panel{
+    background:linear-gradient(180deg,var(--card),var(--paper-2));
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    overflow:hidden auto;
+    display:flex;flex-direction:column;
+  }
+  .panel::-webkit-scrollbar{width:10px}
+  .panel::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:10px;border:3px solid transparent;background-clip:padding-box}
+  .panel-pad{padding:16px 16px 18px}
+  .eyebrow{
+    font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--terra-dark);font-weight:700;
+    display:flex;align-items:center;gap:8px;margin:0 0 2px;
+  }
+  .eyebrow::after{content:"";height:1px;flex:1;background:var(--line)}
+  .panel h2{font-family:"Fraunces",serif;font-weight:600;font-size:18px;margin:2px 0 12px}
+
+  .group{margin-bottom:18px}
+  .group-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .group-title .gi{width:18px;height:18px;color:var(--terra)}
+
+  .control{margin-bottom:15px}
+  .control .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;gap:10px}
+  .control .name{font-size:13.5px;font-weight:600;color:var(--ink)}
+  .control .num{font-variant-numeric:tabular-nums;font-weight:700;font-size:13.5px;color:var(--terra-dark)}
+  .control .num small{font-weight:600;color:var(--ink-soft);font-size:11px}
+  .hint{font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.4}
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;cursor:pointer;margin:0;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:7px;border-radius:6px;
+    background:linear-gradient(90deg,var(--terra) var(--p,30%), #ded3bf var(--p,30%));
+    border:1px solid var(--line);
+  }
+  input[type=range]::-moz-range-track{height:7px;border-radius:6px;background:#ded3bf;border:1px solid var(--line)}
+  input[type=range]::-moz-range-progress{height:7px;border-radius:6px;background:var(--terra)}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:20px;height:20px;margin-top:-7.5px;border-radius:50%;
+    background:radial-gradient(120% 120% at 30% 25%, #fff, #f0e7d6);
+    border:2px solid var(--terra);box-shadow:var(--shadow-sm);
+  }
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#f6efe2;border:2px solid var(--terra);box-shadow:var(--shadow-sm)}
+
+  .presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  button.preset{
+    font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink);
+    background:var(--paper-2);border:1px solid var(--line-strong);border-radius:10px;
+    padding:9px 10px;cursor:pointer;transition:.15s ease;text-align:left;display:flex;align-items:center;gap:8px;
+  }
+  button.preset:hover{background:#fff;border-color:var(--terra);transform:translateY(-1px)}
+  button.preset.reset{grid-column:1 / -1;justify-content:center;color:var(--terra-dark)}
+  button.preset .pi{width:15px;height:15px;color:var(--terra)}
+
+  .toggles{display:flex;gap:14px;flex-wrap:wrap;margin-top:2px}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--terra);width:15px;height:15px}
+
+  details.model{margin-top:6px;border-top:1px solid var(--line);padding-top:12px}
+  details.model summary{font-size:12px;font-weight:700;color:var(--ink-soft);cursor:pointer;letter-spacing:.04em}
+  details.model p{font-size:11.5px;line-height:1.55;color:var(--ink-soft)}
+  details.model code{background:#e7ddca;padding:1px 5px;border-radius:5px;font-size:11px}
+
+  /* ---------- scene ---------- */
+  .stage{position:relative;border-radius:14px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+  #scene{position:absolute;inset:0}
+  #scene canvas{display:block}
+  .overlay{position:absolute;pointer-events:none;font-size:12px}
+  .legend{
+    left:16px;bottom:16px;background:rgba(34,31,26,.74);color:#f1e7d6;
+    border:1px solid rgba(255,255,255,.12);border-radius:11px;padding:11px 13px;backdrop-filter:blur(6px);
+  }
+  .legend .lt{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#cbbba0;margin-bottom:8px}
+  .legend .lr{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12px}
+  .legend .lr span{width:13px;height:13px;border-radius:4px;flex:none}
+  .scene-title{
+    left:16px;top:14px;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.6);
+  }
+  .scene-title .st1{font-family:"Fraunces",serif;font-weight:600;font-size:17px}
+  .scene-title .st2{font-size:11.5px;color:#f0e6d4;letter-spacing:.04em;margin-top:2px;opacity:.92}
+  .credit{
+    right:14px;bottom:13px;color:#f4ead9;text-align:right;text-shadow:0 2px 8px rgba(0,0,0,.7);
+  }
+  .credit b{font-weight:700}
+  .credit small{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#e7c9a9;margin-top:2px}
+  .loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--charcoal);color:#e9dcc6;z-index:5;transition:opacity .6s ease}
+  .loading.hide{opacity:0;pointer-events:none}
+  .loading .l-in{text-align:center;font-family:"Fraunces",serif}
+  .spin{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:var(--terra);margin:0 auto 14px;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* ---------- readouts ---------- */
+  .gauge-wrap{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+  .gauge{position:relative;width:120px;height:120px;flex:none}
+  .gauge svg{transform:rotate(-90deg)}
+  .gauge .gv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .gauge .gv b{font-family:"Fraunces",serif;font-size:30px;line-height:1;font-weight:600}
+  .gauge .gv small{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-top:3px}
+  .gstat .glabel{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+  .gstat .gbadge{font-family:"Fraunces",serif;font-size:23px;font-weight:600;margin:3px 0 8px;line-height:1.05}
+  .gstat p{font-size:12px;color:var(--ink-soft);margin:0;line-height:1.5}
+
+  .zones{display:flex;flex-direction:column;gap:8px;margin:4px 0 6px}
+  .zrow{
+    display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;
+    padding:9px 11px;border-radius:10px;background:var(--paper-2);border:1px solid var(--line);
+  }
+  .zrow .zdot{width:13px;height:13px;border-radius:4px}
+  .zrow .zname{font-weight:600;font-size:13px}
+  .zrow .zsub{font-size:11px;color:var(--ink-soft)}
+  .zrow .zfos{font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;text-align:right}
+  .zrow .ztag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:6px;color:#fff}
+
+  .meter{margin:6px 0 14px}
+  .meter .ml{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-soft);margin-bottom:6px}
+  .meter .mt{height:9px;border-radius:6px;background:#ded3bf;overflow:hidden;border:1px solid var(--line)}
+  .meter .mf{height:100%;width:30%;border-radius:6px;background:linear-gradient(90deg,#7fa9c2,#9ab7c9);transition:width .5s ease}
+
+  .directive{
+    border-radius:12px;padding:14px;background:var(--charcoal);color:#f1e7d6;border:1px solid rgba(255,255,255,.08);
+  }
+  .directive .dh{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#e6b483;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .directive .dtext{font-size:13.5px;line-height:1.55;font-weight:500}
+  .directive .dhorizon{margin-top:11px;padding-top:11px;border-top:1px solid rgba(255,255,255,.12);font-size:12px;color:#d7c6ad}
+  .directive .dhorizon b{color:#f3e7d4}
+
+  /* ---------- footer ---------- */
+  footer{
+    grid-column:1 / -1;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:9px 18px;font-size:12px;color:var(--ink-soft);
+    background:var(--paper-2);border:1px solid var(--line);border-radius:12px;
+  }
+  footer .made{font-weight:600;color:var(--ink)}
+  footer .made b{color:var(--terra-dark)}
+  footer .meta{display:flex;gap:18px;flex-wrap:wrap}
+
+  @media (max-width:1180px){
+    .app{grid-template-columns:1fr;grid-auto-rows:min-content;height:auto;min-height:100vh}
+    .stage{height:62vh;min-height:440px}
+    .panel{max-height:none}
+    header{flex-wrap:wrap}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= HEADER ================= -->
+  <header>
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v6c0 5 3.8 8.2 9 9 5.2-.8 9-4 9-9V7l-9-5z" fill="#fff" fill-opacity=".92"/><path d="M8.5 12.4l2.4 2.5 4.6-5.1" stroke="#9b4820" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>MineShield</h1>
+        <div class="sub">Open-Pit Slope Stability · Digital Twin &amp; Early-Warning</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="pit-status">
+        <div class="lbl">Pit-wide factor of safety</div>
+        <div class="val"><span id="hdrFoS">1.39</span></div>
+      </div>
+      <div class="chip"><span class="dot" id="hdrDot" style="background:var(--green)"></span><span id="hdrRisk">Low risk</span></div>
+    </div>
+  </header>
+
+  <!-- ================= LEFT: CONTROLS ================= -->
+  <aside class="panel" id="controls">
+    <div class="panel-pad">
+      <p class="eyebrow">Live inputs</p>
+      <h2>Mine &amp; environment conditions</h2>
+
+      <div class="group">
+        <p class="group-title"><svg class="gi" viewBox="0 0 24 24" fill="none"><path d="M12 3c3 4 5 6.5 5 9a5 5 0 11-10 0c0-2.5 2-5 5-9z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Hydrology</p>
+
+        <div class="control" data-c>
+          <div class="row"><span class="name">Rainfall intensity</span><span class="num"><span data-v="rainfall">15</span> <small>mm/day</small></span></div>
+          <input type="range" id="rainfall" min="0" max="120" step="1" value="15" />
+          <div class="hint">Drives infiltration and the rising pit water table.</div>
+        </div>
+
+        <div class="control" data-c>
+          <div class="row"><span class="name">Dewatering rate</span><span class="num"><span data-v="dewatering">50</span> <small>%</small></span></div>
+          <input type="range" id="dewatering" min="0" max="100" step="1" value="50" />
+          <div class="hint">Pumping that lowers pore-water pressure in the slope.</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <p class="group-title"><svg class="gi" viewBox="0 0 24 24" fill="none"><path d="M3 17l5-5 4 4 4-7 5 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Operations</p>
+
+        <div class="control" data-c>
+          <div class="row"><span class="name">Blasting intensity</span><span class="num"><span data-v="blasting">10</span> <small>%</small></span></div>
+          <input type="range" id="blasting" min="0" max="100" step="1" value="10" />
+          <div class="hint">Adds dynamic (pseudo-static) load near the pit walls.</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <p class="group-title"><svg class="gi" viewBox="0 0 24 24" fill="none"><path d="M3 20h18M5 20L19 6M19 6v8M19 6h-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Geotechnical</p>
+
+        <div class="control" data-c>
+          <div class="row"><span class="name">Overall slope angle</span><span class="num"><span data-v="slope">34</span> <small>°</small></span></div>
+          <input type="range" id="slope" min="28" max="58" step="1" value="34" />
+          <div class="hint">Rim-to-toe angle of the highwall.</div>
+        </div>
+
+        <div class="control" data-c>
+          <div class="row"><span class="name">Rock cohesion</span><span class="num"><span data-v="cohesion">42</span> <small>kPa</small></span></div>
+          <input type="range" id="cohesion" min="5" max="70" step="1" value="42" />
+        </div>
+
+        <div class="control" data-c>
+          <div class="row"><span class="name">Friction angle</span><span class="num"><span data-v="friction">38</span> <small>°</small></span></div>
+          <input type="range" id="friction" min="22" max="44" step="1" value="38" />
+        </div>
+      </div>
+
+      <div class="group">
+        <p class="group-title">Scenarios</p>
+        <div class="presets">
+          <button class="preset" data-preset="dry"><svg class="pi" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Dry season</button>
+          <button class="preset" data-preset="rainy"><svg class="pi" viewBox="0 0 24 24" fill="none"><path d="M7 15a4 4 0 010-8 5 5 0 019.6-1A3.5 3.5 0 0118 15H7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Rainy season</button>
+          <button class="preset" data-preset="blast"><svg class="pi" viewBox="0 0 24 24" fill="none"><path d="M12 3l2 5 5-1-3 4 3 4-5-1-2 5-2-5-5 1 3-4-3-4 5 1 2-5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Heavy blasting</button>
+          <button class="preset" data-preset="storm"><svg class="pi" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Worst case</button>
+          <button class="preset reset" data-preset="reset">Reset to baseline</button>
+        </div>
+      </div>
+
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" id="tRotate" /> Orbit camera</label>
+        <label class="toggle"><input type="checkbox" id="tWire" /> Show benches</label>
+      </div>
+
+      <details class="model">
+        <summary>How the risk is calculated</summary>
+        <p>Each pit sector is scored with an infinite-slope <b>limit-equilibrium</b> model. Factor of Safety
+        <code>FoS = τ<sub>resisting</sub> / τ<sub>driving</sub></code>, where rainfall and dewatering set the
+        pore-water pressure <code>u</code>, and blasting adds a pseudo-static load. <code>FoS &lt; 1.0</code>
+        indicates failure conditions. Sectors differ in depth, drainage and rock strength, so risk is spatial —
+        as in the field.</p>
+      </details>
+    </div>
+  </aside>
+
+  <!-- ================= CENTER: 3D TWIN ================= -->
+  <section class="stage">
+    <div id="scene"></div>
+    <div class="overlay scene-title">
+      <div class="st1">Kansenshi-style open pit — live twin</div>
+      <div class="st2">Sector risk updates in real time with conditions</div>
+    </div>
+    <div class="overlay legend">
+      <div class="lt">Sector risk</div>
+      <div class="lr"><span style="background:#5f8a55"></span> Low — FoS ≥ 1.5</div>
+      <div class="lr"><span style="background:#cda23e"></span> Elevated — 1.25–1.5</div>
+      <div class="lr"><span style="background:#c46a2e"></span> High — 1.05–1.25</div>
+      <div class="lr"><span style="background:#a3331f"></span> Critical — FoS &lt; 1.05</div>
+    </div>
+    <div class="overlay credit">
+      <b>Developed by Purity Kampamba</b>
+      <small>Environmental Engineer</small>
+    </div>
+    <div class="loading" id="loading"><div class="l-in"><div class="spin"></div>Building pit geometry…</div></div>
+  </section>
+
+  <!-- ================= RIGHT: READOUTS ================= -->
+  <aside class="panel" id="readouts">
+    <div class="panel-pad">
+      <p class="eyebrow">Risk decision</p>
+      <h2>Slope stability assessment</h2>
+
+      <div class="gauge-wrap">
+        <div class="gauge">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#ded3bf" stroke-width="12"/>
+            <circle id="gaugeArc" cx="60" cy="60" r="50" fill="none" stroke="#5f8a55" stroke-width="12"
+                    stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="90"/>
+          </svg>
+          <div class="gv"><b id="gFoS">1.39</b><small>Min FoS</small></div>
+        </div>
+        <div class="gstat">
+          <div class="glabel">Governing sector</div>
+          <div class="gbadge" id="gBadge" style="color:var(--green)">Low risk</div>
+          <p id="gWorst">Sector B (East wall) is closest to the limit.</p>
+        </div>
+      </div>
+
+      <div class="zones" id="zoneList"><!-- filled by JS --></div>
+
+      <div class="meter">
+        <div class="ml"><span>Pit water table</span><span id="wtLabel">low</span></div>
+        <div class="mt"><div class="mf" id="wtFill"></div></div>
+      </div>
+
+      <div class="directive">
+        <div class="dh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 21h20L12 2z" stroke="#e6b483" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9v5M12 17.5v.5" stroke="#e6b483" stroke-width="1.8" stroke-linecap="round"/></svg> Recommended action</div>
+        <div class="dtext" id="directive">All sectors are above the design factor of safety. Maintain routine monitoring and scheduled dewatering.</div>
+        <div class="dhorizon" id="horizon"><b>Early-warning horizon:</b> Stable — routine monitoring.</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= FOOTER ================= -->
+  <footer>
+    <div class="made">Developed by <b>Purity Kampamba</b>, Environmental Engineer</div>
+    <div class="meta">
+      <span>MineShield · Open-pit slope intelligence</span>
+      <span>Limit-equilibrium model · for demonstration &amp; decision support</span>
+    </div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     MineShield — open-pit slope stability digital twin
+     Geotechnical model + Three.js terraced-pit visualisation
+     ============================================================ */
+
+  // ---- geometry constants (scene units ≈ metres) ----
+  var RIM_R = 100, FLOOR_R = 24, PIT_DEPTH = 90, BENCHES = 6;
+  var BENCH_H = PIT_DEPTH / BENCHES;
+  var GAMMA = 23.0;      // rock unit weight kN/m3
+  var GAMMA_W = 9.81;    // water unit weight
+
+  // ---- four pit sectors (spatially varied ground) ----
+  var ZONES = [
+    { id:"A", name:"North wall",  z:14, waterMult:0.85, cohMult:1.10, slopeOff:-1 },
+    { id:"B", name:"East wall",   z:16, waterMult:1.30, cohMult:0.78, slopeOff:6  },
+    { id:"C", name:"South wall",  z:12, waterMult:1.00, cohMult:1.00, slopeOff:0  },
+    { id:"D", name:"West wall",   z:13, waterMult:0.92, cohMult:1.05, slopeOff:2  }
+  ];
+
+  var DEFAULTS = { rainfall:15, dewatering:50, blasting:10, slope:34, cohesion:42, friction:38 };
+  var state = Object.assign({}, DEFAULTS);
+
+  var curW = 0.10;     // current (eased) water-table fraction 0..1
+  var THREEJS_OK = (typeof THREE !== "undefined");
+
+  // ---------- risk colour ramp (earthy) ----------
+  function riskColor(fos){
+    var s = [[0.0,0x5f8a55],[0.4,0xcda23e],[0.7,0xc46a2e],[1.0,0xa3331f]];
+    var t = Math.max(0, Math.min(1, (1.6 - fos) / (1.6 - 0.9)));
+    for (var i=0;i<s.length-1;i++){
+      if (t <= s[i+1][0]){
+        var a=s[i], b=s[i+1];
+        var k=(t-a[0])/(b[0]-a[0]);
+        return lerpHex(a[1], b[1], k);
+      }
+    }
+    return s[s.length-1][1];
+  }
+  function lerpHex(c1,c2,k){
+    var r1=(c1>>16)&255,g1=(c1>>8)&255,b1=c1&255;
+    var r2=(c2>>16)&255,g2=(c2>>8)&255,b2=c2&255;
+    var r=Math.round(r1+(r2-r1)*k),g=Math.round(g1+(g2-g1)*k),b=Math.round(b1+(b2-b1)*k);
+    return (r<<16)|(g<<8)|b;
+  }
+  function cssHex(h){ return "#"+("000000"+h.toString(16)).slice(-6); }
+
+  function riskLabel(fos){
+    if (fos >= 1.5) return "Low";
+    if (fos >= 1.25) return "Elevated";
+    if (fos >= 1.05) return "High";
+    return "Critical";
+  }
+
+  // ---------- the geotechnical core ----------
+  function targetWater(){
+    var tw = 0.25 + 0.60*(state.rainfall/120) - 0.45*(state.dewatering/100);
+    return Math.max(0.04, Math.min(0.97, tw));
+  }
+  function zoneFoS(zone, w){
+    var beta = (state.slope + zone.slopeOff) * Math.PI/180;
+    var sb = Math.sin(beta), cb = Math.cos(beta);
+    var phi = state.friction * Math.PI/180;
+    var z = zone.z;
+    var sigma = GAMMA * z * cb * cb;                     // effective normal proxy
+    var hw = z * Math.max(0, Math.min(1, w * zone.waterMult));
+    var u = GAMMA_W * hw * cb * cb;                      // pore pressure
+    var cohesion = state.cohesion * zone.cohMult;
+    var kh = (state.blasting/100) * 0.25;               // seismic coefficient
+    var resist = cohesion + Math.max(0, (sigma - u)) * Math.tan(phi);
+    var drive  = GAMMA*z*sb*cb + kh*GAMMA*z*cb*cb;
+    return resist / drive;
+  }
+
+  // dominant destabiliser for the directive text
+  function dominantDriver(zone, w){
+    var base = zoneFoS(zone, w);
+    var noWater   = zoneFoS(zone, w*0.2);
+    var noBlast   = (function(){ var b=state.blasting; state.blasting=0; var f=zoneFoS(zone,w); state.blasting=b; return f; })();
+    var gentler   = (function(){ var s=zone.slopeOff; zone.slopeOff=-6; var f=zoneFoS(zone,w); zone.slopeOff=s; return f; })();
+    var gains = {
+      water: noWater - base,
+      blasting: noBlast - base,
+      slope: gentler - base,
+      strength: (state.cohesion < 22 ? 0.6 : 0.0)
+    };
+    var best="water", bv=-1;
+    for (var k in gains){ if (gains[k] > bv){ bv=gains[k]; best=k; } }
+    return best;
+  }
+
+  /* ============================================================
+     THREE.JS SCENE
+     ============================================================ */
+  var renderer, scene, camera, controls, clock;
+  var zoneMeshes = [], zoneLabels = [], floorMesh, waterMesh, rainPts, rainGeo, sunDir;
+  var ROCK_BASE = new THREE.Color(0x8a785d);
+
+  function coneRadius(y){
+    // smooth cone radius at height y (y in [-DEPTH,0])
+    var t = (y + PIT_DEPTH) / PIT_DEPTH;
+    return FLOOR_R + (RIM_R - FLOOR_R) * Math.max(0, Math.min(1, t));
+  }
+
+  function pitProfile(){
+    // staircase profile revolved into terraces
+    var pts = [];
+    var r = RIM_R, y = 0;
+    var dR = (RIM_R - FLOOR_R) / BENCHES;
+    var faceRun = dR * 0.34, berm = dR * 0.66;
+    pts.push(new THREE.Vector2(r, y));
+    for (var i=0;i<BENCHES;i++){
+      r -= faceRun; y -= BENCH_H; pts.push(new THREE.Vector2(r, y)); // steep face
+      r -= berm;                  pts.push(new THREE.Vector2(r, y)); // flat berm
+    }
+    pts.push(new THREE.Vector2(FLOOR_R, -PIT_DEPTH));
+    return pts;
+  }
+
+  function buildZoneGeometry(profile, phiStart, phiLen){
+    var geo = new THREE.LatheGeometry(profile, 26, phiStart, phiLen);
+    // bake strata banding into vertex colours
+    var pos = geo.attributes.position;
+    var colors = [];
+    for (var i=0;i<pos.count;i++){
+      var y = pos.getY(i);
+      var band = Math.floor((-y) / BENCH_H);
+      var shade = 0.80 + 0.20 * (band % 2);          // alternate bench shading
+      shade *= 0.92 + 0.08 * Math.random();          // grain
+      colors.push(shade, shade*0.985, shade*0.95);
+    }
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  function makeLabelSprite(text){
+    var c = document.createElement("canvas"); c.width=256; c.height=128;
+    var x = c.getContext("2d");
+    x.fillStyle="rgba(28,25,21,0.82)"; roundRect(x,28,30,200,68,16); x.fill();
+    x.strokeStyle="rgba(255,255,255,0.25)"; x.lineWidth=2; roundRect(x,28,30,200,68,16); x.stroke();
+    x.fillStyle="#fff"; x.font="600 30px Fraunces, Georgia, serif"; x.textAlign="center"; x.textBaseline="middle";
+    x.fillText(text, 128, 64);
+    var tex = new THREE.CanvasTexture(c); tex.anisotropy=4;
+    var mat = new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false});
+    var sp = new THREE.Sprite(mat); sp.scale.set(26,13,1);
+    return sp;
+  }
+  function roundRect(ctx,x,y,w,h,r){ ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath(); }
+
+  function skyTexture(){
+    var c=document.createElement("canvas"); c.width=16; c.height=256;
+    var g=c.getContext("2d").createLinearGradient(0,0,0,256);
+    g.addColorStop(0,"#aab9c0"); g.addColorStop(0.45,"#cfcab9"); g.addColorStop(0.78,"#e6dcc6"); g.addColorStop(1,"#efe6d2");
+    var ctx=c.getContext("2d"); ctx.fillStyle=g; ctx.fillRect(0,0,16,256);
+    var t=new THREE.CanvasTexture(c); return t;
+  }
+
+  function makeTruck(color){
+    var g = new THREE.Group();
+    var bodyMat = new THREE.MeshStandardMaterial({color:color, roughness:.6, metalness:.2});
+    var darkMat = new THREE.MeshStandardMaterial({color:0x2c2722, roughness:.8});
+    var bed = new THREE.Mesh(new THREE.BoxGeometry(7,3,5), bodyMat); bed.position.y=2.6; bed.castShadow=true;
+    var cab = new THREE.Mesh(new THREE.BoxGeometry(2.4,2.4,4.4), bodyMat); cab.position.set(4.4,2.4,0); cab.castShadow=true;
+    g.add(bed,cab);
+    for (var sx=-1;sx<=1;sx+=2) for (var sz=-1;sz<=1;sz+=2){
+      var w=new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,1.4,16),darkMat);
+      w.rotation.x=Math.PI/2; w.position.set(sx*2.4,1.2,sz*2.6); g.add(w);
+    }
+    return g;
+  }
+
+  function initThree(){
+    var host = document.getElementById("scene");
+    renderer = new THREE.WebGLRenderer({antialias:true, alpha:false});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    renderer.setSize(host.clientWidth, host.clientHeight);
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+    host.appendChild(renderer.domElement);
+
+    scene = new THREE.Scene();
+    scene.background = skyTexture();
+    scene.fog = new THREE.Fog(0xe3d8c2, 360, 760);
+
+    camera = new THREE.PerspectiveCamera(46, host.clientWidth/host.clientHeight, 0.5, 3000);
+    camera.position.set(168, 132, 188);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0,-34,0);
+    controls.enableDamping = true; controls.dampingFactor = 0.06;
+    controls.minDistance = 110; controls.maxDistance = 520;
+    controls.maxPolarAngle = Math.PI*0.49;
+
+    clock = new THREE.Clock();
+
+    // ---- lighting ----
+    scene.add(new THREE.HemisphereLight(0xcdd6d2, 0x6b5a42, 0.85));
+    sunDir = new THREE.DirectionalLight(0xffe7c2, 1.15);
+    sunDir.position.set(180, 240, 120); sunDir.castShadow=true;
+    sunDir.shadow.mapSize.set(2048,2048);
+    var sc = sunDir.shadow.camera; sc.near=10; sc.far=900; sc.left=-260; sc.right=260; sc.top=260; sc.bottom=-260;
+    sunDir.shadow.bias=-0.0004;
+    scene.add(sunDir);
+    var fill = new THREE.DirectionalLight(0xbcd0e0, 0.25); fill.position.set(-160,90,-140); scene.add(fill);
+
+    // ---- ground around the rim (earthy, gently undulating) ----
+    var groundGeo = new THREE.RingGeometry(RIM_R-2, 820, 96, 8);
+    var gp = groundGeo.attributes.position;
+    for (var i=0;i<gp.count;i++){
+      var vx=gp.getX(i), vy=gp.getY(i); var d=Math.sqrt(vx*vx+vy*vy);
+      var n = (d>RIM_R+12) ? (Math.sin(vx*0.03)*Math.cos(vy*0.028)+Math.sin(d*0.02))*3.2 : 0;
+      gp.setZ(i, n);
+    }
+    groundGeo.computeVertexNormals();
+    var ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({color:0x9c8a6c, roughness:1.0, flatShading:true}));
+    ground.rotation.x = -Math.PI/2; ground.position.y = 0; ground.receiveShadow = true;
+    scene.add(ground);
+
+    // ---- pit sectors ----
+    var profile = pitProfile();
+    for (var zi=0; zi<4; zi++){
+      var geo = buildZoneGeometry(profile, zi*Math.PI/2, Math.PI/2);
+      var mat = new THREE.MeshStandardMaterial({vertexColors:true, color:ROCK_BASE.clone(), roughness:0.96, metalness:0.02, side:THREE.DoubleSide, flatShading:true});
+      mat.emissive = new THREE.Color(0x000000);
+      var mesh = new THREE.Mesh(geo, mat); mesh.castShadow=true; mesh.receiveShadow=true;
+      scene.add(mesh); zoneMeshes.push(mesh);
+
+      var mid = (zi+0.5)*Math.PI/2;
+      var lab = makeLabelSprite("Sector "+ZONES[zi].id);
+      lab.position.set(Math.sin(mid)*(RIM_R*1.02), 14, Math.cos(mid)*(RIM_R*1.02));
+      scene.add(lab); zoneLabels.push(lab);
+    }
+
+    // ---- pit floor ----
+    floorMesh = new THREE.Mesh(new THREE.CircleGeometry(FLOOR_R, 48),
+      new THREE.MeshStandardMaterial({color:0x6f6048, roughness:1.0}));
+    floorMesh.rotation.x = -Math.PI/2; floorMesh.position.y = -PIT_DEPTH+0.2; floorMesh.receiveShadow=true;
+    scene.add(floorMesh);
+
+    // ---- water table ----
+    waterMesh = new THREE.Mesh(new THREE.CircleGeometry(1,64),
+      new THREE.MeshStandardMaterial({color:0x4d6f63, roughness:0.25, metalness:0.0, transparent:true, opacity:0.82}));
+    waterMesh.rotation.x = -Math.PI/2;
+    scene.add(waterMesh);
+
+    // ---- haul trucks for scale ----
+    var t1 = makeTruck(0xd9a52b); t1.position.set(Math.sin(0.7)*(RIM_R+34), 0, Math.cos(0.7)*(RIM_R+34)); t1.rotation.y=-0.7+Math.PI/2; t1.scale.setScalar(0.9); scene.add(t1);
+    var t2 = makeTruck(0xc98b2a); t2.position.set(Math.sin(3.7)*(RIM_R+24), 0, Math.cos(3.7)*(RIM_R+24)); t2.rotation.y=-3.7; t2.scale.setScalar(0.8); scene.add(t2);
+
+    // ---- rain ----
+    rainGeo = new THREE.BufferGeometry();
+    var N=1400, arr=new Float32Array(N*3);
+    for (var i2=0;i2<N;i2++){ arr[i2*3]= (Math.random()-0.5)*260; arr[i2*3+1]=Math.random()*220; arr[i2*3+2]=(Math.random()-0.5)*260; }
+    rainGeo.setAttribute("position", new THREE.BufferAttribute(arr,3));
+    rainPts = new THREE.Points(rainGeo, new THREE.PointsMaterial({color:0xbfcad0, size:0.7, transparent:true, opacity:0}));
+    scene.add(rainPts);
+
+    window.addEventListener("resize", onResize);
+    document.getElementById("loading").classList.add("hide");
+    animate();
+  }
+
+  function onResize(){
+    var host=document.getElementById("scene");
+    if (!host.clientWidth) return;
+    camera.aspect = host.clientWidth/host.clientHeight; camera.updateProjectionMatrix();
+    renderer.setSize(host.clientWidth, host.clientHeight);
+  }
+
+  // ---------- per-frame visual update from the model ----------
+  var labelColors = [];
+  function updateVisuals(){
+    var minFoS = 99, worst = ZONES[0], results = [];
+    for (var i=0;i<4;i++){
+      var fos = zoneFoS(ZONES[i], curW);
+      results.push(fos);
+      if (fos < minFoS){ minFoS = fos; worst = ZONES[i]; worstIdx=i; }
+      var hex = riskColor(fos);
+      var col = ROCK_BASE.clone().lerp(new THREE.Color(hex), 0.55);
+      zoneMeshes[i].material.color.copy(col);
+      // critical pulse + slump creep
+      var crit = Math.max(0, 1.05 - fos);
+      var pulse = crit>0 ? (0.18+0.12*Math.sin(performance.now()*0.006)) : 0;
+      zoneMeshes[i].material.emissive.setHex(hex).multiplyScalar(pulse);
+      zoneMeshes[i].position.y = -Math.min(6, crit*22) * (0.6+0.4*Math.sin(performance.now()*0.004));
+      zoneLabels[i].material.color.setHex(hex).lerp(new THREE.Color(0xffffff),0.15);
+    }
+    window.__results = results; window.__min = minFoS; window.__worst = worst;
+    return {results:results, minFoS:minFoS, worst:worst};
+  }
+  var worstIdx = 1;
+
+  function updateWaterMesh(){
+    var y = -PIT_DEPTH + curW*PIT_DEPTH;
+    var r = coneRadius(y) * 0.985;
+    waterMesh.position.y = y; waterMesh.scale.set(r,r,1);
+    var muddy = Math.min(1, state.rainfall/120);
+    waterMesh.material.color.setRGB(0.30+0.12*muddy, 0.43-0.06*muddy, 0.39-0.10*muddy);
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    var dt = clock.getDelta();
+    // ease water toward target → "simulation responds" smoothly but immediately
+    curW += (targetWater() - curW) * Math.min(1, dt*2.6);
+    updateWaterMesh();
+    var info = updateVisuals();
+
+    // rain
+    var rIntensity = Math.max(0, (state.rainfall-8)/112);
+    rainPts.material.opacity = rIntensity*0.55;
+    if (rIntensity>0){
+      var p = rainGeo.attributes.position;
+      var speed = 120 + 240*rIntensity;
+      for (var i=0;i<p.count;i++){
+        var y=p.getY(i)-speed*dt; if (y<0){ y=210+Math.random()*20; }
+        p.setY(i,y);
+      }
+      p.needsUpdate=true;
+    }
+
+    if (controls.autoRotate) {}
+    controls.update();
+    renderer.render(scene, camera);
+
+    // throttle DOM updates
+    domTick += dt;
+    if (domTick > 0.12){ domTick=0; updateReadouts(info); }
+  }
+  var domTick = 0;
+
+  /* ============================================================
+     DOM / READOUTS
+     ============================================================ */
+  function gaugeArc(fos){
+    var arc = document.getElementById("gaugeArc");
+    var frac = Math.max(0, Math.min(1, (fos-0.7)/(2.0-0.7)));
+    var circ = 2*Math.PI*50;
+    arc.setAttribute("stroke-dasharray", circ);
+    arc.setAttribute("stroke-dashoffset", circ*(1-frac));
+    arc.setAttribute("stroke", cssHex(riskColor(fos)));
+  }
+
+  function updateReadouts(info){
+    info = info || {results:ZONES.map(function(z){return zoneFoS(z,curW);})};
+    var results = info.results;
+    var minFoS = 99, worstI = 0;
+    for (var i=0;i<results.length;i++){ if (results[i]<minFoS){minFoS=results[i];worstI=i;} }
+    var lvl = riskLabel(minFoS);
+    var hex = riskColor(minFoS);
+
+    // header
+    setText("hdrFoS", minFoS.toFixed(2));
+    setText("hdrRisk", lvl+" risk");
+    document.getElementById("hdrDot").style.background = cssHex(hex);
+
+    // gauge
+    setText("gFoS", minFoS.toFixed(2));
+    var badge=document.getElementById("gBadge"); badge.textContent=lvl+" risk"; badge.style.color=cssHex(hex);
+    gaugeArc(minFoS);
+    setText("gWorst", "Sector "+ZONES[worstI].id+" ("+ZONES[worstI].name+") is governing stability.");
+
+    // zone list
+    var list=document.getElementById("zoneList"); var html="";
+    for (var z=0; z<results.length; z++){
+      var f=results[z], h=riskColor(f), l=riskLabel(f);
+      html += '<div class="zrow">'
+        + '<span class="zdot" style="background:'+cssHex(h)+'"></span>'
+        + '<span><div class="zname">Sector '+ZONES[z].id+'</div><div class="zsub">'+ZONES[z].name+'</div></span>'
+        + '<span class="zfos" style="color:'+cssHex(h)+'">'+f.toFixed(2)+'</span>'
+        + '<span class="ztag" style="background:'+cssHex(h)+'">'+l+'</span>'
+        + '</div>';
+    }
+    list.innerHTML=html;
+
+    // water meter
+    var wt=document.getElementById("wtFill");
+    wt.style.width=(curW*100).toFixed(0)+"%";
+    wt.style.background = curW>0.66 ? "linear-gradient(90deg,#7a93a0,#5f7e74)" : "linear-gradient(90deg,#8fa9b8,#9ab7c9)";
+    setText("wtLabel", curW<0.3?"low":curW<0.6?"moderate":curW<0.82?"high":"critically high");
+
+    // directive
+    var driver = dominantDriver(ZONES[worstI], curW);
+    var zName = "Sector "+ZONES[worstI].id;
+    var msg;
+    if (minFoS >= 1.5){
+      msg = "All sectors are above the design factor of safety (1.5). Maintain routine monitoring and scheduled dewatering.";
+    } else if (driver==="water"){
+      msg = "Pore-water pressure is rising in "+zName+" and is eroding the safety margin. Increase dewatering and limit infiltration before the next rainfall peak.";
+    } else if (driver==="blasting"){
+      msg = "Dynamic loading from blasting is destabilising "+zName+". Reduce charge size, sequence away from the highwall, and increase standoff distance.";
+    } else if (driver==="slope"){
+      msg = "The slope angle at "+zName+" exceeds the safe envelope. Flatten the overall angle or implement a cutback in this sector.";
+    } else {
+      msg = "Weak material is governing stability at "+zName+". Add toe buttressing and re-validate the geotechnical model for this sector.";
+    }
+    setText("directive", msg);
+
+    var hz;
+    if (minFoS < 1.05) hz = "<b>Early-warning horizon:</b> Immediate — failure conditions present. Restrict access and evacuate haulage below "+zName+".";
+    else if (minFoS < 1.25) hz = "<b>Early-warning horizon:</b> Days — intervene now and monitor displacement hourly.";
+    else if (minFoS < 1.5) hz = "<b>Early-warning horizon:</b> Weeks — schedule mitigation and tighten survey intervals.";
+    else hz = "<b>Early-warning horizon:</b> Stable — routine monitoring.";
+    document.getElementById("horizon").innerHTML = hz;
+  }
+
+  function setText(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; }
+
+  /* ============================================================
+     INPUT WIRING
+     ============================================================ */
+  function syncSlider(input){
+    var pct = (input.value-input.min)/(input.max-input.min)*100;
+    input.style.setProperty("--p", pct+"%");
+    var out = document.querySelector('[data-v="'+input.id+'"]');
+    if (out) out.textContent = input.value;
+    state[input.id] = parseFloat(input.value);
+  }
+  var ids = ["rainfall","dewatering","blasting","slope","cohesion","friction"];
+  ids.forEach(function(id){
+    var el=document.getElementById(id);
+    syncSlider(el);
+    el.addEventListener("input", function(){ syncSlider(el); if(!THREEJS_OK) updateReadouts(); });
+  });
+
+  function applyPreset(p){
+    var sets = {
+      reset: DEFAULTS,
+      dry:   {rainfall:5,  dewatering:75, blasting:10, slope:34, cohesion:46, friction:39},
+      rainy: {rainfall:92, dewatering:30, blasting:15, slope:38, cohesion:38, friction:36},
+      blast: {rainfall:30, dewatering:50, blasting:88, slope:40, cohesion:34, friction:35},
+      storm: {rainfall:118,dewatering:12, blasting:80, slope:50, cohesion:18, friction:30}
+    };
+    var s = sets[p]; if(!s) return;
+    ids.forEach(function(id){ var el=document.getElementById(id); el.value=s[id]; syncSlider(el); });
+    if(!THREEJS_OK) updateReadouts();
+  }
+  document.querySelectorAll("[data-preset]").forEach(function(b){
+    b.addEventListener("click", function(){ applyPreset(b.getAttribute("data-preset")); });
+  });
+
+  document.getElementById("tRotate").addEventListener("change", function(e){
+    if (controls){ controls.autoRotate=e.target.checked; controls.autoRotateSpeed=0.6; }
+  });
+  document.getElementById("tWire").addEventListener("change", function(e){
+    zoneMeshes.forEach(function(m){ m.material.wireframe=e.target.checked; });
+  });
+
+  /* ============================================================
+     BOOT
+     ============================================================ */
+  updateReadouts();
+  if (THREEJS_OK){
+    try { initThree(); }
+    catch(err){
+      console.error(err);
+      document.getElementById("loading").innerHTML =
+        '<div class="l-in" style="max-width:320px;line-height:1.5">The 3D twin could not start in this browser, '
+        + 'but the live risk dashboard is fully functional.<br><br>'+(err && err.message ? err.message : "")+'</div>';
+    }
+  } else {
+    document.getElementById("loading").innerHTML =
+      '<div class="l-in" style="max-width:320px;line-height:1.5">3D library did not load (offline?). '
+      + 'The dashboard still works — connect to the internet to view the digital twin.</div>';
+  }
+})();
+</script>
+</body>
+</html>
